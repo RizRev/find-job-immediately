@@ -1,0 +1,39 @@
+name: Daily Job Search
+
+on:
+  schedule:
+    # Jalan 2x sehari: jam 05:00 WIB (22:00 UTC hari sebelumnya) dan 17:00 WIB (10:00 UTC)
+    - cron: "0 22 * * *"
+    - cron: "0 10 * * *"
+  workflow_dispatch: {} # biar bisa trigger manual dari tab Actions kalau mau tes
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # perlu buat commit balik seen_jobs.json
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run job search
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python find_job.py
+
+      - name: Commit updated seen_jobs.json
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "github-actions"
+          git add seen_jobs.json
+          git diff --quiet --cached || git commit -m "chore: update seen jobs"
+          git push
