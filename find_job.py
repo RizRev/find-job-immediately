@@ -19,7 +19,7 @@ from jobspy import scrape_jobs
 load_dotenv()  # baca file .env kalau ada (local dev). Di GitHub Actions, .env gak ada — otomatis skip, tetap pakai secrets.
 
 # --- Ubah sesuai kebutuhan ---
-SEARCH_TERMS = ["frontend", "next", "react", "vue", "javascript", "full stack developer", "backend developer", "react developer"]
+SEARCH_TERMS = ["frontend", "next", "react", "vue", "javascript", "full stack developer", "backend developer", "react developer", "software engineer", "html"]
 LOCATION = "Jakarta, Indonesia"
 LINKEDIN_RESULTS = 50    # LinkedIn paling ketat rate-limitnya, jaga di bawah ~10 halaman
 OTHER_RESULTS = 100      # Indeed & Google jauh lebih longgar
@@ -28,7 +28,8 @@ SEEN_FILE = Path("seen_jobs.json")
 # -------------------------------
 
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
+# Bisa isi lebih dari satu chat ID, dipisah koma di .env / Secrets, contoh: "987654321,111222333"
+TELEGRAM_CHAT_IDS = [cid.strip() for cid in os.environ["TELEGRAM_CHAT_ID"].split(",") if cid.strip()]
 
 
 def load_seen() -> set[str]:
@@ -43,17 +44,21 @@ def save_seen(seen: set[str]) -> None:
 
 def send_telegram(text: str) -> None:
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    resp = requests.post(
-        url,
-        json={
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": text,
-            "parse_mode": "HTML",
-            "disable_web_page_preview": True,
-        },
-        timeout=15,
-    )
-    resp.raise_for_status()
+    for chat_id in TELEGRAM_CHAT_IDS:
+        try:
+            resp = requests.post(
+                url,
+                json={
+                    "chat_id": chat_id,
+                    "text": text,
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": True,
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+        except Exception as e:
+            print(f"[WARN] Gagal kirim ke chat_id {chat_id}: {e}")
 
 
 def scrape_site(site: str, term: str):
